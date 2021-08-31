@@ -37,10 +37,15 @@ public class ServiceRequestWrapper extends HttpRequestWrapper {
 		this.loadBalancer = loadBalancer;
 	}
 
+	/**
+	 * 获取请求的URL地址 RibbonLoadBalancerClient#reconstructURI 重构请求URI地址
+	 * http://ServiceA/sayHello/leo 进行重构替换 http://localhost:9090/sayHello/leo
+	 *
+	 * @return
+	 */
 	@Override
 	public URI getURI() {
 		URI uri = this.loadBalancer.reconstructURI(this.instance, getRequest().getURI());
 		return uri;
 	}
-
 }

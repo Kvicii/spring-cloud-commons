@@ -28,6 +28,9 @@ import org.springframework.beans.factory.annotation.Qualifier;
 /**
  * Annotation to mark a RestTemplate or WebClient bean to be configured to use a
  * LoadBalancerClient.
+ * <p>
+ * 将一个RestTemplate标记为底层采用LoadBalancerClient来执行实际的HTTP请求 支持负载均衡
+ *
  * @author Spencer Gibb
  */
 @Target({ ElementType.FIELD, ElementType.PARAMETER, ElementType.METHOD })

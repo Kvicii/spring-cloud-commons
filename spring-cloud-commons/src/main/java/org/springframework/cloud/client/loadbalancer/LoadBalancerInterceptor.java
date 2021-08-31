@@ -26,6 +26,8 @@ import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.util.Assert;
 
 /**
+ * 拦截RestTemplate的请求 先执行拦截器中的逻辑
+ *
  * @author Spencer Gibb
  * @author Dave Syer
  * @author Ryan Baxter
@@ -47,12 +49,26 @@ public class LoadBalancerInterceptor implements ClientHttpRequestInterceptor {
 		this(loadBalancer, new LoadBalancerRequestFactory(loadBalancer));
 	}
 
+	/**
+	 * 将请求路径封装到HttpRequest 对RestTemplate的HTTP调用 最终都会执行到此方法中的逻辑 例:
+	 * `restTemplate.getForObject("http://ServiceA/sayHello/leo", String.class);`
+	 * 相当于执行的是拦截器中的intercept方法 而不是RestTemplate原生的逻辑
+	 *
+	 * @param request
+	 * @param body      请求体
+	 * @param execution HTTP通信组件
+	 * @return
+	 * @throws IOException
+	 */
 	@Override
 	public ClientHttpResponse intercept(final HttpRequest request, final byte[] body,
 			final ClientHttpRequestExecution execution) throws IOException {
+		// 获取到的是请求路径(http://ServiceA/sayHello/leo)
 		final URI originalUri = request.getURI();
+		// 获取到的是服务名称(ServiceA)
 		String serviceName = originalUri.getHost();
 		Assert.state(serviceName != null, "Request URI does not contain a valid hostname: " + originalUri);
+		// 传入服务名称和构造出的LoadBalancerRequest 执行LoadBalanceClient对应的负载均衡请求
 		return this.loadBalancer.execute(serviceName, this.requestFactory.createRequest(request, body, execution));
 	}
 

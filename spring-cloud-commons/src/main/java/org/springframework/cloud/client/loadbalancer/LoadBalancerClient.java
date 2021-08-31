@@ -24,6 +24,8 @@ import org.springframework.cloud.client.ServiceInstance;
 /**
  * Represents a client-side load balancer.
  *
+ * 实现类位于 spring-cloud-netflix中的spring-cloud-netflix-core项目中的RibbonLoadBalancerClient
+ *
  * @author Spencer Gibb
  */
 public interface LoadBalancerClient extends ServiceInstanceChooser {
@@ -44,14 +46,17 @@ public interface LoadBalancerClient extends ServiceInstanceChooser {
 	/**
 	 * Executes request using a ServiceInstance from the LoadBalancer for the specified
 	 * service.
-	 * @param serviceId The service ID to look up the LoadBalancer.
+	 * <p>
+	 * 对一个服务实例执行对应的请求 服务实例是从LoadBalancer中返回的
+	 *
+	 * @param serviceId       The service ID to look up the LoadBalancer.
 	 * @param serviceInstance The service to execute the request to.
-	 * @param request Allows implementations to execute pre and post actions, such as
-	 * incrementing metrics.
-	 * @param <T> type of the response
-	 * @throws IOException in case of IO issues.
+	 * @param request         Allows implementations to execute pre and post actions, such as
+	 *                        incrementing metrics.
+	 * @param <T>             type of the response
 	 * @return The result of the LoadBalancerRequest callback on the selected
 	 * ServiceInstance.
+	 * @throws IOException in case of IO issues.
 	 */
 	<T> T execute(String serviceId, ServiceInstance serviceInstance, LoadBalancerRequest<T> request) throws IOException;
 

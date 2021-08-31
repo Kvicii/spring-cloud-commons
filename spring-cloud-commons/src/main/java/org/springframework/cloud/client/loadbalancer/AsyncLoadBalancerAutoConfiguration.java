@@ -31,6 +31,8 @@ import org.springframework.web.client.AsyncRestTemplate;
 
 /**
  * Auto-configuration for blocking client-side load balancing.
+ * <p>
+ * 支持异步请求负载均衡
  *
  * @author Rob Worsnop
  */

@@ -41,6 +41,8 @@ import org.springframework.web.client.RestTemplate;
 
 /**
  * Auto-configuration for blocking client-side load balancing.
+ * <p>
+ * 同步请求
  *
  * @author Spencer Gibb
  * @author Dave Syer
@@ -54,6 +56,7 @@ import org.springframework.web.client.RestTemplate;
 @EnableConfigurationProperties(LoadBalancerProperties.class)
 public class LoadBalancerAutoConfiguration {
 
+	// 在项目代码中 会实例化一个RestTemplate的Bean 一旦实例化后 就会放入这个restTemplates集合中
 	@LoadBalanced
 	@Autowired(required = false)
 	private List<RestTemplate> restTemplates = Collections.emptyList();
@@ -64,13 +67,20 @@ public class LoadBalancerAutoConfiguration {
 	@Bean
 	public SmartInitializingSingleton loadBalancedRestTemplateInitializerDeprecated(
 			final ObjectProvider<List<RestTemplateCustomizer>> restTemplateCustomizers) {
-		return () -> restTemplateCustomizers.ifAvailable(customizers -> {
-			for (RestTemplate restTemplate : LoadBalancerAutoConfiguration.this.restTemplates) {
-				for (RestTemplateCustomizer customizer : customizers) {
-					customizer.customize(restTemplate);
-				}
+		return new SmartInitializingSingleton() {
+			// 和初始化相关 一旦系统启动 在完成Bean的实例化以后 一定会执行
+			@Override
+			public void afterSingletonsInstantiated() {
+				restTemplateCustomizers.ifAvailable(customizers -> {
+					for (RestTemplate restTemplate : LoadBalancerAutoConfiguration.this.restTemplates) {
+						// 处理每个RestTemplate 再对每个负责定制化RestTemplate的Customizer组件进行遍历 去定制化RestTemplate
+						for (RestTemplateCustomizer customizer : customizers) {
+							customizer.customize(restTemplate);
+						}
+					}
+				});
 			}
-		});
+		};
 	}
 
 	@Bean
@@ -83,19 +93,37 @@ public class LoadBalancerAutoConfiguration {
 	@Conditional(RetryMissingOrDisabledCondition.class)
 	static class LoadBalancerInterceptorConfig {
 
+		/**
+		 * 返回为每个RestTemplate定制的拦截器
+		 *
+		 * @param loadBalancerClient 通过方法直接传入了LoadBalanceClient 一般是
+		 *                           有一个实现类 在其他地方 对这个实现类构造了一个实例 打成了一个Spring的Bean 才可以纳入Spring的管理
+		 * @param requestFactory
+		 * @return
+		 */
 		@Bean
 		public LoadBalancerInterceptor loadBalancerInterceptor(LoadBalancerClient loadBalancerClient,
 				LoadBalancerRequestFactory requestFactory) {
 			return new LoadBalancerInterceptor(loadBalancerClient, requestFactory);
 		}
 
+		/**
+		 * RestTemplateCustomizer是对RestTemplate进行定制化的组件
+		 *
+		 * @param loadBalancerInterceptor 从上一个方法返回的定制拦截器
+		 * @return
+		 */
 		@Bean
 		@ConditionalOnMissingBean
 		public RestTemplateCustomizer restTemplateCustomizer(final LoadBalancerInterceptor loadBalancerInterceptor) {
-			return restTemplate -> {
-				List<ClientHttpRequestInterceptor> list = new ArrayList<>(restTemplate.getInterceptors());
-				list.add(loadBalancerInterceptor);
-				restTemplate.setInterceptors(list);
+			return new RestTemplateCustomizer() {
+				// 对RestTemplate进行定制化(添加拦截器) 后续对这个RestTemplate的调用都会先执行拦截器中的逻辑 再进行HTTP调用
+				@Override
+				public void customize(RestTemplate restTemplate) {
+					List<ClientHttpRequestInterceptor> list = new ArrayList<>(restTemplate.getInterceptors());
+					list.add(loadBalancerInterceptor);
+					restTemplate.setInterceptors(list);
+				}
 			};
 		}
 
@@ -137,6 +165,8 @@ public class LoadBalancerAutoConfiguration {
 
 	/**
 	 * Auto configuration for retry intercepting mechanism.
+	 * <p>
+	 * 和RetryTemplate相关 和RestTemplate无关
 	 */
 	@Configuration(proxyBeanMethods = false)
 	@ConditionalOnClass(RetryTemplate.class)
@@ -158,10 +188,13 @@ public class LoadBalancerAutoConfiguration {
 		@ConditionalOnMissingBean
 		public RestTemplateCustomizer restTemplateCustomizer(
 				final RetryLoadBalancerInterceptor loadBalancerInterceptor) {
-			return restTemplate -> {
-				List<ClientHttpRequestInterceptor> list = new ArrayList<>(restTemplate.getInterceptors());
-				list.add(loadBalancerInterceptor);
-				restTemplate.setInterceptors(list);
+			return new RestTemplateCustomizer() {
+				@Override
+				public void customize(RestTemplate restTemplate) {
+					List<ClientHttpRequestInterceptor> list = new ArrayList<>(restTemplate.getInterceptors());
+					list.add(loadBalancerInterceptor);
+					restTemplate.setInterceptors(list);
+				}
 			};
 		}
 

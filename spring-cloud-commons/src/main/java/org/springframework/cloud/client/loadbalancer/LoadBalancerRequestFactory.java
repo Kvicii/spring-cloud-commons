@@ -18,6 +18,7 @@ package org.springframework.cloud.client.loadbalancer;
 
 import java.util.List;
 
+import org.springframework.cloud.client.ServiceInstance;
 import org.springframework.http.HttpRequest;
 import org.springframework.http.client.ClientHttpRequestExecution;
 import org.springframework.http.client.ClientHttpResponse;
@@ -48,14 +49,28 @@ public class LoadBalancerRequestFactory {
 
 	public LoadBalancerRequest<ClientHttpResponse> createRequest(final HttpRequest request, final byte[] body,
 			final ClientHttpRequestExecution execution) {
-		return instance -> {
-			HttpRequest serviceRequest = new ServiceRequestWrapper(request, instance, this.loadBalancer);
-			if (this.transformers != null) {
-				for (LoadBalancerRequestTransformer transformer : this.transformers) {
-					serviceRequest = transformer.transformRequest(serviceRequest, instance);
+		return new LoadBalancerRequest<ClientHttpResponse>() {
+			/**
+			 * 对指定的Server发起HTTP请求
+			 *
+			 * @param instance
+			 * @return
+			 * @throws Exception
+			 */
+			@Override
+			public ClientHttpResponse apply(ServiceInstance instance) throws Exception {
+				// 将HttpRequest和ServiceInstance封装为了一个ServiceRequestWrapper
+				HttpRequest serviceRequest = new ServiceRequestWrapper(request, instance, LoadBalancerRequestFactory.this.loadBalancer);
+				if (LoadBalancerRequestFactory.this.transformers != null) {
+					for (LoadBalancerRequestTransformer transformer : LoadBalancerRequestFactory.this.transformers) {
+						serviceRequest = transformer.transformRequest(serviceRequest, instance);
+					}
 				}
+				// 将ServiceRequestWrapper交给ClientHttpRequestExecution执行
+				// 执行spring-web的源码 使用底层的http组件 从ServiceRequestWrapper中获取出来了对应的真正的请求URL地址 发起一次请求
+				// 真正的核心代码位于ServiceRequestWrapper中
+				return execution.execute(serviceRequest, body);
 			}
-			return execution.execute(serviceRequest, body);
 		};
 	}
 
