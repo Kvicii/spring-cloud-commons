@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2020 the original author or authors.
+ * Copyright 2012-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,26 +14,18 @@
  * limitations under the License.
  */
 
-package org.springframework.cloud.configuration;
+package org.springframework.cloud.client.loadbalancer;
 
-import java.util.Arrays;
-import java.util.List;
+import org.springframework.http.HttpRequest;
 
 /**
- * Exception thrown when the current setup is not compatible.
+ * Represents a {@link LoadBalancerRequest} created on top of an {@link HttpRequest}.
  *
- * @author Marcin Grzejszczak
  * @author Olga Maciaszek-Sharma
- * @since 1.3.6
+ * @since 3.1.2
  */
-class CompatibilityNotMetException extends RuntimeException {
+public interface HttpRequestLoadBalancerRequest<T> extends LoadBalancerRequest<T> {
 
-	final List<VerificationResult> results;
-
-	CompatibilityNotMetException(List<VerificationResult> results) {
-		super("Spring Cloud/ Spring Boot version compatibility checks have failed: "
-				+ Arrays.toString(results.toArray()));
-		this.results = results;
-	}
+	HttpRequest getHttpRequest();
 
 }
